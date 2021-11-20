@@ -56,6 +56,7 @@ s = db.Session()
 # db.crawl_and_save_to_db("16.05.2012", end_date="01.01.2014", s=s)
 # db.crawl_and_save_to_db("30.06.2012", end_date="01.01.2014", s=s)
 # db.crawl_and_save_to_db("09.07.2012", end_date="01.01.2014", s=s)
-db.crawl_and_save_to_db("02.12.2012", end_date="01.01.2014", s=s)
+# db.crawl_and_save_to_db("04.12.2012", end_date="01.01.2014", s=s)
+db.crawl_and_save_to_db("11.01.2013", end_date="01.01.2014", s=s)
 
 # print(crawler_test_article('https://www.inform.kz/ru/v-zhanaozene-prodolzhaetsya-rabota-po-blagoustroystvu-goroda_a2430452'))

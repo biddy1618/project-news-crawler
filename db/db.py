@@ -33,7 +33,6 @@ def crawl_and_save_to_db(start_date: str, s: sqlalchemy.orm.Session, end_date: s
     dates = Helper.generate_dates(start_date, end_date)
     for d in dates:
         data = crawler.crawl_for_date(date=d)
-        print(data)
         
         logger.info(Helper._message(f'Saving {len(data["articles"])} articles.'))
         a_len = len(data['articles'])
