@@ -2,19 +2,34 @@ import sqlalchemy
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy_utils import create_database, database_exists
 
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv, dotenv_values
 
 import os
 import logging
+from pathlib import Path
 
 from db import models
 from helper import Helper
 from crawler.crawler import Crawler
 
-load_dotenv()
+env_path = Path(__file__).parents[1].absolute() / '.env'
+print(env_path)
+load_dotenv(env_path)
 
-engine = create_engine(os.getenv('DB_URI_DEV'))
+
+PG_USER     = os.getenv('PG_USER'       , 'dauren'        )
+PG_PASSWORD = os.getenv('PG_PASSWORD'   , 'changeme'        )
+PG_URL      = os.getenv('PG_URL'        , 'localhost:5432'  )
+PG_DATABSE  = os.getenv('PG_DATABASE'   , 'news'            )        
+
+PG_URI = f'postgresql://{PG_USER}:{PG_PASSWORD}@{PG_URL}/{PG_DATABSE}'
+
+if not database_exists(PG_URI):
+    create_database(PG_URI)
+
+engine = create_engine(PG_URI)
 logger = logging.getLogger(__name__)
 
 models.Base.metadata.create_all(engine)
