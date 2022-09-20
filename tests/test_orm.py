@@ -1,3 +1,10 @@
+'''
+Module for testing ORM.
+
+Author: Dauren Baitursyn
+Date: 11.07.21
+'''
+
 import unittest
 import os
 
@@ -11,7 +18,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-class TestORM(unittest.TestCase):    
+
+class TestORM(unittest.TestCase):
     a1 = {
         'url': 'url1',
         'title': 'title1',
@@ -40,7 +48,7 @@ class TestORM(unittest.TestCase):
     aInv = {}
 
     urls1 = {'url_main': 'url1', 'url_other': 'url2'}
-    urls2 = {'url_main': 'url1', 'url_other': 'url3'} 
+    urls2 = {'url_main': 'url1', 'url_other': 'url3'}
     urls3 = {'url_main': 'url3', 'url_other': 'url2'}
     urls1d = {'url_main': 'url1', 'url_other': 'url2'}
     urlsInv1 = {'url_main': 'invalid1', 'url_other': 'url1'}
@@ -64,17 +72,16 @@ class TestORM(unittest.TestCase):
                 autocommit=False,
                 autoflush=False,
                 bind=self.engine
-                )
             )
+        )
         models.Base.query = self.session.query_property()
 
-
     def test_articles(self):
-        """
+        '''
         Testing ORM operations with articles models.
-        """
+        '''
         s = self.session()
-                
+
         models.insert_article(self.a1, s)
         models.insert_article(self.a2, s)
         models.insert_article(self.a3, s)
@@ -92,24 +99,24 @@ class TestORM(unittest.TestCase):
         self.assertEqual(models.insert_article(self.aInv, s), None)
 
     def test_links(self):
-        """
+        '''
         Testing ORM operations with links models.
-        """
+        '''
         s = self.session()
         models.insert_article(self.a1, s)
         models.insert_article(self.a2, s)
         models.insert_article(self.a3, s)
         s.commit()
-        
+
         models.insert_link(self.urls1, s)
         models.insert_link(self.urls2, s)
         models.insert_link(self.urls3, s)
         s.commit()
-        l = s.query(models.ArticleLink).all()
-        self.assertEqual(len(l), 3)
-        self.assertNotEqual(l[0].id, None)
-        self.assertNotEqual(l[1].id, None)
-        self.assertNotEqual(l[2].id, None)
+        links = s.query(models.ArticleLink).all()
+        self.assertEqual(len(links), 3)
+        self.assertNotEqual(links[0].id, None)
+        self.assertNotEqual(links[1].id, None)
+        self.assertNotEqual(links[2].id, None)
 
         models.insert_link(self.urls1d, s)
         self.assertRaises(sqlalchemy.exc.IntegrityError, s.commit)
@@ -121,14 +128,14 @@ class TestORM(unittest.TestCase):
         self.assertEqual(models.insert_link(self.urlsInv4, s), None)
 
     def test_tags(self):
-        """
+        '''
         Testing ORM operations with tags models.
-        """
+        '''
         s = self.session()
         models.insert_article(self.a1, s)
         models.insert_article(self.a2, s)
         s.commit()
-        
+
         models.insert_tag(self.tag1, s)
         models.insert_tag(self.tag2, s)
         models.insert_tag(self.tag3, s)
@@ -145,8 +152,7 @@ class TestORM(unittest.TestCase):
 
         self.assertEqual(models.insert_tag(self.tagInv1, s), None)
         self.assertEqual(models.insert_tag(self.tagInv2, s), None)
-        
+
     def tearDown(self):
         self.session.remove()
         models.Base.metadata.drop_all(self.engine)
-
