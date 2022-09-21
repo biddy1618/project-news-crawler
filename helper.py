@@ -36,7 +36,7 @@ def generate_dates(start_date: str, end_date: str = None) -> List[str]:
     Args:
         startDate (str): Start date in format "dd.mm.yyyy".
         endDate (str, optional): End date in format "dd.mm.yyyy", should be later than start date.
-        Defaults to None.
+            Defaults to None.
 
     Returns:
         List[str]: List of dates for the given date range (days) or None in case of error.

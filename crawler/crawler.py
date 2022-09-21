@@ -1,5 +1,10 @@
 '''
-Module for crawler class.
+Module for crawler main functions. It returns the list of articles given the date range.
+The main function `crawl_and_save_to_file` uses locally defined functions:
+`_get_session`
+`_close_session`
+`_get_url`
+`_crawl_for_date`
 
 Author: Dauren Baitursyn
 Date: 11.07.21
@@ -9,358 +14,127 @@ import requests
 import logging
 import time
 import json
-import re
 
 import urllib.parse as urlparse
 
-
-from bs4 import BeautifulSoup as bs
-from typing import Dict, List, Optional
+from typing import Dict
 
 import helper
+from crawler.links import get_links, get_pages
+from crawler.article import get_article
 
 logger = logging.getLogger(__name__)
 
+URL_ARCHIVE = 'https://www.inform.kz/ru/archive'
+TIMEOUT = 5
 
-class Crawler():
+
+def _get_session() -> requests.Session:
     '''
-    Generic class defining crawler.
+    Gets instance of session from requests package
+
+    Returns:
+        requests.Session: Session object.
     '''
-    def __init__(self):
-        self.URL_MAIN = 'https://www.inform.kz'
-        self.URL_ARCHIVE = 'https://www.inform.kz/ru/archive'
-        self.TIMEOUT = 5
-        self.session = requests.Session()
+    return requests.Session()
 
-    def close(self):
-        '''
-        Close the session associated with the crawler.
-        '''
-        self.session.close()
 
-    def get_url(self, url: str, params: Dict[str, str] = None) -> requests.Response:
-        '''
-        Fetch the URL provided and return response object.
+def _close_session(session: requests.Session):
+    '''
+    Close the session associated with the crawler.
 
-        Args:
-            url (str): URL provided.
-            params (Dict[str, str]): Query parameters in dictinary format.
+    Args:
+        session (requests.Session): Session to close
+    '''
+    session.close()
 
-        Returns:
-            requests.Response: HTML page fetched with response code or None in case of exception.
-        '''
-        if params:
-            url_parsed = urlparse.urlparse(url)
-            url_str = url_parsed._replace(
-                query=urlparse.urlencode(dict(urlparse.parse_qsl(url_parsed.query), **params))).geturl()
+
+def _get_url(session: requests.Session, url: str, params: Dict[str, str] = None) -> requests.Response:
+    '''
+    Fetch the URL provided and return response object.
+
+    Args:
+        session (requests.Session): Session object.
+        url (str): URL provided.
+        params (Dict[str, str]): Query parameters in dictinary format.
+
+    Returns:
+        requests.Response: HTML page fetched with response code or None in case of exception.
+    '''
+    if params:
+        url_parsed = urlparse.urlparse(url)
+        url_str = url_parsed._replace(
+            query=urlparse.urlencode(dict(urlparse.parse_qsl(url_parsed.query), **params))).geturl()
+    else:
+        url_str = url
+    for i in range(10):
+        try:
+            r = session.get(url, params=params, timeout=TIMEOUT)
+            r.raise_for_status()
+        except requests.exceptions.RequestException as e:
+            if i == 9:
+                logger.error(
+                    helper._message(f'Failed to get the URL {url_str}', e))
+                return None
+            logger.warning(
+                helper._message(f'Failed to get the URL {url_str}, retrying in 0.1 seconds.', e))
+            time.sleep(0.1)
         else:
-            url_str = url
-        for i in range(10):
-            try:
-                r = self.session.get(url, params=params, timeout=self.TIMEOUT)
-                r.raise_for_status()
-            except requests.exceptions.RequestException as e:
-                if i == 9:
-                    logger.error(
-                        helper._message(f'Failed to get the URL {url_str}', e))
-                    return None
-                logger.warning(
-                    helper._message(f'Failed to get the URL {url_str}, retrying in 0.1 seconds.', e))
-                time.sleep(0.1)
-            else:
-                logger.info(helper._message(f'Success retrieving URL {url_str}'))
-                break
-        return r
-
-    def _extract_links(self, response: requests.Response) -> List[str]:
-        '''
-        Retrieving links given the response object of the archive list of articles for
-        specific date.
-
-        Args:
-            body (requests.Response): Response object containing links to articles for a given date.
-
-        Returns:
-            List[str]: List of extractred article links given the reponse or None in case of exception.
-        '''
-        soup = bs(response.content, 'html.parser')
-        try:
-            links = soup.find('div', class_='news-list__col').find_all('a')
-            links = set([urlparse.urlparse(self.URL_MAIN + link['href'].strip()).geturl() for link in links])
-        except AttributeError as e:
-            logger.error(helper._message(f'Failed to extract links to articles at {response.url}.', e))
-            # raise SystemExit(e)
-            return None
-        logger.info(helper._message(f'Retrieved article links from {response.url} successfully.'))
-        return list(links)
-
-    def _extract_pages(self, response: requests.Response) -> List[str]:
-        '''
-        Retrieving article page links from first page for the some particular date.
-        Note: call this function for the first page from particular date to retieve the article pages
-        for that particular date.
-
-        Args:
-            response (requests.Response): Response object of the first page.
-
-        Returns:
-            List[str]: Links for the article pages or None in case of exception.
-        '''
-        soup = bs(response.content, 'html.parser')
-        try:
-            links = soup.find('p', class_='pagination').find_all('a')
-            links = set([urlparse.urlparse(self.URL_MAIN + link['href'].strip()).geturl() for link in links])
-        except (AttributeError, IndexError, ValueError, TypeError) as e:
-            logger.error(helper._message(f'Failed to fetch articles page links at URL {response.url}', e))
-            # raise SystemExit(e)
-            return []
-        logger.info(helper._message(f'Retrieved article page links from {response.url} successfully'))
-        return list(links)
-
-    def get_links(self, response: requests.Response) -> List[str]:
-        '''
-        Get the list of article URLs for specific date.
-
-        Args:
-            response (requests.Response): Response object of the first page for specific date.
-
-        Returns:
-            List[str]: List of URLs for articles for the specific date or None in case of exception.
-        '''
-        articles = self._extract_links(response)
-        for link in self._extract_pages(response):
-            r = self.get_url(link)
-            articles.extend(self._extract_links(r))
-        return articles
-
-    def _get_title(self, soup: bs, url: str) -> str:
-        '''
-        Get the title of the article from BS object.
-
-        Args:
-            soup (bs): BS object.
-            url (str): URL of the article (for reporting exceptions).
-
-        Returns:
-            str: Title of the article or None in case of exception.
-        '''
-        try:
-            title = soup.find('div', class_='title_article_bl')
-            title = re.sub(r'\s\s+', ' ', title.get_text().strip())
-        except AttributeError as e:
-            logger.error(helper._message(f'Failed to fetch title at URL {url}', e))
-            # raise SystemExit(e)
-            return None
-        return title
-
-    def _get_date(self, soup: bs, url: str) -> str:
-        '''
-        Get the date of the article from BS object.
-
-        Args:
-            soup (bs): BS object.
-            url (str): URL of the article (for reporting exceptions).
-
-        Returns:
-            str: Date of the article or None in case of exception.
-        '''
-        try:
-            date = soup.find('div', class_='time_article_bl')
-            date = re.sub(r'\s\s+', ' ', date.get_text().strip())
-        except AttributeError as e:
-            logger.error(helper._message(f'Failed to fetch date at URL {url}', e))
-            # raise SystemExit(e)
-            return None
-        return date
-
-    def _get_reference_links(self, soup: bs, url: str) -> List[str]:
-        '''
-        Get the links of related articles from BS object.
-
-        Args:
-            soup (bs): BS object.
-            url (str): URL of the article (for reporting exceptions).
-
-        Returns:
-            List[str]: List of links. Return 0 elements if no links or None in case of exception.
-        '''
-        try:
-            links_frame = soup.find('div', class_='frame_news_article_adapt')
-            links = []
-            if links_frame:
-                links = links_frame.find_all('a')
-                links = set([urlparse.urlparse(self.URL_MAIN + link['href'].strip()).geturl() for link in links])
-                links_frame.decompose()
-        except AttributeError as e:
-            logger.error(helper._message(f'Failed to fetch links at URL {url}', e))
-            # raise SystemExit(e)
-            return None
-        return list(links)
-
-    def _decompose_quotes(self, soup: bs, url: str) -> None:
-        '''
-        Decomposes some elements for clear retrieval of the article body.
-
-        Args:
-            soup (bs): BS object.
-            url (str): URL of the article (for reporting exceptions).
-        '''
-        try:
-            quotes = soup.find_all('blockquote', class_='instagram-media')
-            if quotes:
-                for q in quotes:
-                    q.decompose()
-        except AttributeError as e:
-            logger.error(helper._message(f'Failed to decompose quotes at URL {url}', e))
-            # raise SystemExit(e)
-
-    def _get_body(self, soup: bs, url: str) -> str:
-        '''
-        Get the article body from BS object.
-
-        Args:
-            soup (bs): BS object.
-            url (str): URL of the article (for reporting exceptions).
-
-        Returns:
-            str: Article body (text) or None in case of exception.
-        '''
-        try:
-            body = soup.find('div', class_='body_article_bl')
-            body = re.sub(r'\s\s+', ' ', body.get_text().strip())
-        except AttributeError as e:
-            logger.error(helper._message(f'Failed to fetch the body text at {url}', e))
-            # raise SystemExit(e)
-            return None
-        return body
-
-    def _get_tags(self, soup: bs, url: str) -> List[str]:
-        '''
-        Get the tags for the article from BS object. It is assumed that articles are always with tags.
-        (FIX IF NEEDED)
-
-        Args:
-            soup (bs): BS object.
-            url (str): URL of the article (for reporting exceptions).
-
-        Returns:
-            List[str]: List of tags or None in case of exception.
-        '''
-        try:
-            tags = soup.find('div', class_='keywords_bl').find_all('a')
-            tags = [t.get_text().strip() for t in tags]
-        except AttributeError as e:
-            logger.error(helper._message(f'Failed to fetch tags at URL {url}', e))
-            # raise SystemExit(e)
-            return None
-        return tags
-
-    def _get_author(self, soup: bs, url: str) -> Optional[str]:
-        '''
-        Get the author of the article if exists from BS object.
-
-        Args:
-            soup (bs): BS object.
-            url (str): URL of the article (for reporting exceptions).
-
-        Returns:
-            Optional[str]: Return author (text) or None if not found or in case of exception.
-        '''
-        try:
-            author = soup.find('div', class_='data_author_bl').find('a')
-            if author:
-                author = re.sub(r'\s\s+', ' ', author.get_text().strip())
-        except AttributeError as e:
-            logger.error(helper._message(f'Failed to fetch author at URL {url}', e))
-            # raise SystemExit(e)
-            return None
-        return author
-
-    def extract_article(self, response: requests.Response) -> Dict[str, str]:
-        '''
-        Retrieving article data given the response from article URL.
-
-        Args:
-            response (requests.Response): Response object of the article URL.
-
-        Returns:
-            Dict[str, str]: Dictionary with elements of the article.
-        '''
-        soup = bs(response.content, 'html.parser')
-        res = {}
-        res['url'] = response.url
-
-        title = self._get_title(soup, response.url)
-        date = self._get_date(soup, response.url)
-        links = self._get_reference_links(soup, response.url)
-        # self._decompose_quotes(soup, response.url)
-        body = self._get_body(soup, response.url)
-        if not all([title, date, body]):
-            logger.error(helper._message(f'Failed to fetch the article at URL {response.url}'))
-            return None
-        tags = self._get_tags(soup, response.url)
-        author = self._get_author(soup, response.url)
-
-        res['title'] = title
-        res['date'] = date
-        if len(links) > 0:
-            res['links'] = links
-        res['body'] = body
-        if len(tags) > 0:
-            res['tags'] = tags
-        if author:
-            res['author'] = author
-        logger.info(helper._message(f'Retrieved article at URL: {response.url}'))
-
-        return res
-
-    def crawl_for_date(self, date: str, log_every: int = None) -> dict:
-        '''
-        Retrieve articles for the given date.
-
-        Args:
-            date (str): Date in format "dd.mm.yyyy".
-            log_every (int, optional): Log message every nth retrieved record.
-                Defaults to None in which case doesn't log.
-
-        Returns:
-            list: List of retrieved articles.
-        '''
-        articles = []
-        r = self.get_url(self.URL_ARCHIVE, {'date': date})
-
-        url_links = self.get_links(r)
-        logger.info(helper._message(f'Retrieving {len(url_links)} articles for the date: {date}'))
-        for i, l in enumerate(url_links):
-            page = self.get_url(l)
-            article = self.extract_article(page)
-            if article is None:
-                continue
-            articles.append(article)
-            if log_every and i+1 % log_every == 0:
-                logger.info(helper._message(f'Retrieved {log_every} articles.'))
-
-        logger.info(helper._message('Retrieved all articles.'))
-
-        return articles
+            logger.info(helper._message(f'Success retrieving URL {url_str}'))
+            break
+    return r
 
 
-def crawl_and_save_to_file(start_date: str, end_date: str = None) -> None:
+def _crawl_for_date(session: requests.Session, date: str, log_every: int = None) -> dict:
+    '''
+    Retrieve articles for the given date.
+
+    Args:
+        session (requests.Session): Session object.
+        date (str): Date in format "dd.mm.yyyy".
+        log_every (int, optional): Log message every nth retrieved record.
+            Defaults to None in which case doesn't log.
+
+    Returns:
+        list: List of retrieved articles.
+    '''
+    articles = []
+    r_main = _get_url(session, URL_ARCHIVE, {'date': date})
+
+    r_allpages = get_pages(r_main)
+    r_allpages = [r_main] + [_get_url(session, page) for page in r_allpages]
+    url_links = get_links(r_allpages)
+    logger.info(helper._message(f'Retrieving {len(url_links)} articles for the date: {date}'))
+    for i, link in enumerate(url_links):
+        page = _get_url(session, link)
+        article = get_article(page)
+        if article is None:
+            continue
+        articles.append(article)
+        if log_every and i+1 % log_every == 0:
+            logger.info(helper._message(f'Retrieved {log_every} articles.'))
+
+    logger.info(helper._message('Retrieved all articles.'))
+
+    return articles
+
+
+def crawl_and_save_to_file(start_date: str, file_name: str, end_date: str = None) -> None:
     '''
     Crawl data for the given date(s) and save it to file system.
 
     Args:
         start_date (str): Start date to crawl.
-        s (sqlalchemy.orm.Session): Session object through which writing to DB is performed.
+        file_name (str): File name to save the crawled files.
         end_date (str, optional): End date to crawl. Defaults to None.
     '''
-    crawler = Crawler()
     dates = helper.generate_dates(start_date, end_date)
+    session = _get_session()
     final = {}
     for d in dates:
-        articles = crawler.crawl_for_date(date=d)
+        articles = _crawl_for_date(session=session, date=d)
         final[d] = articles
 
-    crawler.close()
-    with open('test.json', 'w', encoding='utf8') as json_file:
+    _close_session(session)
+    with open(file_name, 'w', encoding='utf8') as json_file:
         json.dump(final, json_file, ensure_ascii=False)
