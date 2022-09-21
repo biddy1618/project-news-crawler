@@ -21,6 +21,8 @@ Python 3.9.13, conda 4.14.0
     * For linting checks
 * `autopep8==1.7.0`
     * For inplace style fixing
+* `jupyter==1.0.0`
+    * For testing code
 
 
 More about packages in [`requirements-new.txt`](./requirements-new.txt).

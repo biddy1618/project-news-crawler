@@ -74,24 +74,25 @@ class Crawler():
 
     def _extract_links(self, response: requests.Response) -> List[str]:
         '''
-        Retrieving links given the response object.
+        Retrieving links given the response object of the archive list of articles for
+        specific date.
 
         Args:
-            body (requests.Response): Response object containing links to articles.
+            body (requests.Response): Response object containing links to articles for a given date.
 
         Returns:
             List[str]: List of extractred article links given the reponse or None in case of exception.
         '''
         soup = bs(response.content, 'html.parser')
-        link_divs = soup.find_all('div', class_='lenta_news_block')
         try:
-            links = [d.li.a['href'].strip() for d in link_divs]
+            links = soup.find('div', class_='news-list__col').find_all('a')
+            links = set([urlparse.urlparse(self.URL_MAIN + link['href'].strip()).geturl() for link in links])
         except AttributeError as e:
             logger.error(helper._message(f'Failed to extract links to articles at {response.url}.', e))
             # raise SystemExit(e)
             return None
         logger.info(helper._message(f'Retrieved article links from {response.url} successfully.'))
-        return [urlparse.urlparse(self.URL_MAIN + link).geturl() for link in links]
+        return list(links)
 
     def _extract_pages(self, response: requests.Response) -> List[str]:
         '''
@@ -107,25 +108,21 @@ class Crawler():
         '''
         soup = bs(response.content, 'html.parser')
         try:
-            pages = soup.find('p', class_='pagination')
-            pages = pages.find_all('a')
-            pi = pages[0].getText().strip()
-            pl = pages[-1].getText().strip()
-            parsed_url = urlparse.urlparse(response.url)
-            pages = [parsed_url._replace(path=f'/ru/archive/{str(i)}').geturl() for i in range(int(pi), int(pl) + 1)]
+            links = soup.find('p', class_='pagination').find_all('a')
+            links = set([urlparse.urlparse(self.URL_MAIN + link['href'].strip()).geturl() for link in links])
         except (AttributeError, IndexError, ValueError, TypeError) as e:
             logger.error(helper._message(f'Failed to fetch articles page links at URL {response.url}', e))
             # raise SystemExit(e)
             return []
         logger.info(helper._message(f'Retrieved article page links from {response.url} successfully'))
-        return pages
+        return list(links)
 
     def get_links(self, response: requests.Response) -> List[str]:
         '''
-        Get the list of URLs for the articles given the response object from particular URL of specific date.
+        Get the list of article URLs for specific date.
 
         Args:
-            response (requests.Response): Response object of the first page.
+            response (requests.Response): Response object of the first page for specific date.
 
         Returns:
             List[str]: List of URLs for articles for the specific date or None in case of exception.
@@ -148,8 +145,8 @@ class Crawler():
             str: Title of the article or None in case of exception.
         '''
         try:
-            title = soup.find('div', class_='article_title')
-            title = title.getText().strip()
+            title = soup.find('div', class_='title_article_bl')
+            title = re.sub(r'\s\s+', ' ', title.get_text().strip())
         except AttributeError as e:
             logger.error(helper._message(f'Failed to fetch title at URL {url}', e))
             # raise SystemExit(e)
@@ -168,8 +165,8 @@ class Crawler():
             str: Date of the article or None in case of exception.
         '''
         try:
-            date = soup.find('div', class_='date_public_art')
-            date = date.getText().strip()
+            date = soup.find('div', class_='time_article_bl')
+            date = re.sub(r'\s\s+', ' ', date.get_text().strip())
         except AttributeError as e:
             logger.error(helper._message(f'Failed to fetch date at URL {url}', e))
             # raise SystemExit(e)
@@ -188,17 +185,17 @@ class Crawler():
             List[str]: List of links. Return 0 elements if no links or None in case of exception.
         '''
         try:
-            links = soup.find('div', class_='frame_news_article')
-            res = set()
-            if links:
-                for a in links.find_all('a'):
-                    res.add(urlparse.urlparse(self.URL_MAIN + a['href']).geturl())
-                links.decompose()
+            links_frame = soup.find('div', class_='frame_news_article_adapt')
+            links = []
+            if links_frame:
+                links = links_frame.find_all('a')
+                links = set([urlparse.urlparse(self.URL_MAIN + link['href'].strip()).geturl() for link in links])
+                links_frame.decompose()
         except AttributeError as e:
             logger.error(helper._message(f'Failed to fetch links at URL {url}', e))
             # raise SystemExit(e)
             return None
-        return list(res)
+        return list(links)
 
     def _decompose_quotes(self, soup: bs, url: str) -> None:
         '''
@@ -229,13 +226,8 @@ class Crawler():
             str: Article body (text) or None in case of exception.
         '''
         try:
-            body = soup.find('div', class_='article_news_body')
-            body = body.getText().strip()
-            body = re.sub(' +', ' ', body)
-            body = re.sub('\r', '\n', body)
-            body = re.sub('\n +', '\n', body)
-            body = re.sub(' +\n', '\n', body)
-            body = re.sub('\n+', '\n', body)
+            body = soup.find('div', class_='body_article_bl')
+            body = re.sub(r'\s\s+', ' ', body.get_text().strip())
         except AttributeError as e:
             logger.error(helper._message(f'Failed to fetch the body text at {url}', e))
             # raise SystemExit(e)
@@ -244,7 +236,7 @@ class Crawler():
 
     def _get_tags(self, soup: bs, url: str) -> List[str]:
         '''
-        Get the tags for the article from BS object. It is assumed that articles is always with tags.
+        Get the tags for the article from BS object. It is assumed that articles are always with tags.
         (FIX IF NEEDED)
 
         Args:
@@ -255,8 +247,8 @@ class Crawler():
             List[str]: List of tags or None in case of exception.
         '''
         try:
-            tags = soup.find('div', class_='keyword_art')
-            tags = [t.strip() for t in tags.getText().split('#') if len(t.strip()) > 0]
+            tags = soup.find('div', class_='keywords_bl').find_all('a')
+            tags = [t.get_text().strip() for t in tags]
         except AttributeError as e:
             logger.error(helper._message(f'Failed to fetch tags at URL {url}', e))
             # raise SystemExit(e)
@@ -275,9 +267,9 @@ class Crawler():
             Optional[str]: Return author (text) or None if not found or in case of exception.
         '''
         try:
-            author = soup.find('p', class_='name_p')
+            author = soup.find('div', class_='data_author_bl').find('a')
             if author:
-                author = author.getText().strip()
+                author = re.sub(r'\s\s+', ' ', author.get_text().strip())
         except AttributeError as e:
             logger.error(helper._message(f'Failed to fetch author at URL {url}', e))
             # raise SystemExit(e)
@@ -301,7 +293,7 @@ class Crawler():
         title = self._get_title(soup, response.url)
         date = self._get_date(soup, response.url)
         links = self._get_reference_links(soup, response.url)
-        self._decompose_quotes(soup, response.url)
+        # self._decompose_quotes(soup, response.url)
         body = self._get_body(soup, response.url)
         if not all([title, date, body]):
             logger.error(helper._message(f'Failed to fetch the article at URL {response.url}'))
@@ -332,11 +324,9 @@ class Crawler():
                 Defaults to None in which case doesn't log.
 
         Returns:
-            dict: Dictionary with articles, links and tags retrieved.
+            list: List of retrieved articles.
         '''
         articles = []
-        links = []
-        tags = []
         r = self.get_url(self.URL_ARCHIVE, {'date': date})
 
         url_links = self.get_links(r)
@@ -347,24 +337,12 @@ class Crawler():
             if article is None:
                 continue
             articles.append(article)
-            if 'links' in article:
-                for link in article['links']:
-                    url_link = {'url_main': article['url'], 'url_other': link}
-                    links.append(url_link)
-            if 'tags' in article:
-                for t in article['tags']:
-                    tag = {'url': article['url'], 'tag': t}
-                    tags.append(tag)
             if log_every and i+1 % log_every == 0:
                 logger.info(helper._message(f'Retrieved {log_every} articles.'))
 
         logger.info(helper._message('Retrieved all articles.'))
 
-        return {
-            'articles': articles,
-            'links': links,
-            'tags': tags
-        }
+        return articles
 
 
 def crawl_and_save_to_file(start_date: str, end_date: str = None) -> None:
@@ -380,8 +358,8 @@ def crawl_and_save_to_file(start_date: str, end_date: str = None) -> None:
     dates = helper.generate_dates(start_date, end_date)
     final = {}
     for d in dates:
-        final[d] = crawler.crawl_for_date(date=d)
-        # final[d] = data['articles']
+        articles = crawler.crawl_for_date(date=d)
+        final[d] = articles
 
     crawler.close()
     with open('test.json', 'w', encoding='utf8') as json_file:

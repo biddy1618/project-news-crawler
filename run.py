@@ -6,7 +6,7 @@ Date: 11.07.21
 '''
 
 from crawler.crawler import Crawler, crawl_and_save_to_file
-# import helper
+import helper
 # from db import db, models
 
 import logging
@@ -33,36 +33,36 @@ logging.basicConfig(
     ]
 )
 
-# crawler = Crawler()
+crawler = Crawler()
 # s = db.Session()
 
 
-# def crawler_test(dateFirst='01.01.2012', dateLast='01.01.2013'):
-#     dates = helper.generate_dates(dateFirst, dateLast)
+def crawler_test(dateFirst='01.01.2012', dateLast='01.01.2013'):
+    dates = helper.generate_dates(dateFirst, dateLast)
 
-#     for d in dates:
-#         res = set()
+    for d in dates:
+        res = set()
 
-#         r_link_date = crawler.get_url(
-#             crawler.URL_ARCHIVE,
-#             {'date': d}
-#         )
+        r_link_date = crawler.get_url(
+            crawler.URL_ARCHIVE,
+            {'date': d}
+        )
 
-#         links = crawler.get_links(r_link_date)
+        links = crawler.get_links(r_link_date)
 
-#         for link in links:
-#             if link in res:
-#                 print(f'Duplicate article URL: {link}')
-#                 continue
-#             r_page = crawler.get_url(link)
-#             res.add(link)
-#             crawler.extract_article(r_page)
+        for link in links:
+            if link in res:
+                print(f'Duplicate article URL: {link}')
+                continue
+            r_page = crawler.get_url(link)
+            res.add(link)
+            crawler.extract_article(r_page)
 
 
-# def crawler_test_article(url):
-#     r_page = crawler.get_url(url)
-#     article = crawler.extract_article(r_page)
-#     return article
+def crawler_test_article(url):
+    r_page = crawler.get_url(url)
+    article = crawler.extract_article(r_page)
+    return article
 
 
 # models.Base.metadata.drop_all(db.engine)
@@ -78,5 +78,5 @@ logging.basicConfig(
 # db.crawl_and_save_to_db("11.01.2013", end_date="01.01.2014", s=s)
 
 
-crawl_and_save_to_file('01.01.2012', end_date='15.01.2012')
-# print(crawler_test_article('https://www.inform.kz/ru/v-zhanaozene-prodolzhaetsya-rabota-po-blagoustroystvu-goroda_a2430452'))
+crawl_and_save_to_file('01.01.2012', end_date='05.01.2012')
+# print(crawler_test_article('https://www.inform.kz/ru/vengry-protestuyut-protiv-novoy-konstitucii-strany_a2430500'))
