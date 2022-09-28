@@ -104,10 +104,40 @@ DATA_FOLDER.mkdir(parents=True, exist_ok=True)
 
 
 # 2015
-FOLDER_2015 = Path.joinpath(DATA_FOLDER, '2015')
-FOLDER_2015.mkdir(parents=True, exist_ok=True)
+# FOLDER_2015 = Path.joinpath(DATA_FOLDER, '2015')
+# FOLDER_2015.mkdir(parents=True, exist_ok=True)
 
-LOG_FILE = Path.joinpath(FOLDER_2015, 'crawler.logs')
+# LOG_FILE = Path.joinpath(FOLDER_2015, 'crawler.logs')
+
+# logging.basicConfig(
+#     format='{levelname} {name} {asctime}: {message}',
+#     level=logging.INFO,
+#     datefmt='%m/%d/%Y %H:%M:%S',
+#     style='{',
+#     handlers=[
+#         logging.FileHandler(LOG_FILE),
+#         logging.StreamHandler()
+#     ]
+# )
+
+# MONTHS = list(range(1, 12))
+
+# for month in MONTHS:
+#     start_date = '01.'+str(month).zfill(2)+'.2015'
+#     end_date = '01.'+str(month+1).zfill(2)+'.2015'
+#     file_name = Path.joinpath(FOLDER_2015, str(month).zfill(2)+'15.json')
+#     crawl_and_save_to_file(start_date=start_date, end_date=end_date, file_name=file_name)
+# crawl_and_save_to_file(
+#     start_date='01.12.2015',
+#     end_date='01.01.2016',
+#     file_name=Path.joinpath(FOLDER_2015, '1215.json'))
+
+
+# 2016
+FOLDER_2016 = Path.joinpath(DATA_FOLDER, '2016')
+FOLDER_2016.mkdir(parents=True, exist_ok=True)
+
+LOG_FILE = Path.joinpath(FOLDER_2016, 'crawler.logs')
 
 logging.basicConfig(
     format='{levelname} {name} {asctime}: {message}',
@@ -123,11 +153,11 @@ logging.basicConfig(
 MONTHS = list(range(1, 12))
 
 for month in MONTHS:
-    start_date = '01.'+str(month).zfill(2)+'.2015'
-    end_date = '01.'+str(month+1).zfill(2)+'.2015'
-    file_name = Path.joinpath(FOLDER_2015, str(month).zfill(2)+'15.json')
+    start_date = '01.'+str(month).zfill(2)+'.2016'
+    end_date = '01.'+str(month+1).zfill(2)+'.2016'
+    file_name = Path.joinpath(FOLDER_2016, str(month).zfill(2)+'16.json')
     crawl_and_save_to_file(start_date=start_date, end_date=end_date, file_name=file_name)
 crawl_and_save_to_file(
-    start_date='01.12.2015',
-    end_date='01.01.2016',
-    file_name=Path.joinpath(FOLDER_2015, '1215.json'))
+    start_date='01.12.2016',
+    end_date='01.01.2017',
+    file_name=Path.joinpath(FOLDER_2016, '1216.json'))
