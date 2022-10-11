@@ -130,10 +130,10 @@ def crawl_and_save_to_file(start_date: str, file_name: str, end_date: str = None
     '''
     dates = helper.generate_dates(start_date, end_date)
     session = _get_session()
-    final = {}
+    final = []
     for d in dates:
         articles = _crawl_for_date(session=session, date=d)
-        final[d] = articles
+        final.extend(articles)
 
     _close_session(session)
     with open(file_name, 'w', encoding='utf8') as json_file:

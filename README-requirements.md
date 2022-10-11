@@ -25,6 +25,8 @@ Python 3.9.13, conda 4.14.0
     * For testing code
 * `dvc==2.24.0` and `dvc-gdrive==2.19.0`
     * For managing data
+* `aiohttp==3.8.1`, `cchardet==2.1.7`, `aiodns==3.0.0`, and `Brotli==1.0.9`
+    * For asyncronous HTTP Client
 
 
 More about packages in [`requirements-new.txt`](./requirements-new.txt).

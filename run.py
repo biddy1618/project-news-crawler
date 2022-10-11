@@ -10,7 +10,7 @@ from pathlib import Path
 
 from crawler.crawler import crawl_and_save_to_file
 
-DATA_FOLDER = Path.joinpath(Path.cwd(), 'data')
+DATA_FOLDER = Path.joinpath(Path.cwd(), 'data/ru/')
 DATA_FOLDER.mkdir(parents=True, exist_ok=True)
 
 # 2012
@@ -284,10 +284,40 @@ DATA_FOLDER.mkdir(parents=True, exist_ok=True)
 
 
 # 2021
-FOLDER_2021 = Path.joinpath(DATA_FOLDER, '2021')
-FOLDER_2021.mkdir(parents=True, exist_ok=True)
+# FOLDER_2021 = Path.joinpath(DATA_FOLDER, '2021')
+# FOLDER_2021.mkdir(parents=True, exist_ok=True)
 
-LOG_FILE = Path.joinpath(FOLDER_2021, 'crawler.logs')
+# LOG_FILE = Path.joinpath(FOLDER_2021, 'crawler.logs')
+
+# logging.basicConfig(
+#     format='{levelname} {name} {asctime}: {message}',
+#     level=logging.INFO,
+#     datefmt='%m/%d/%Y %H:%M:%S',
+#     style='{',
+#     handlers=[
+#         logging.FileHandler(LOG_FILE),
+#         logging.StreamHandler()
+#     ]
+# )
+
+# MONTHS = list(range(1, 12))
+
+# for month in MONTHS:
+#     start_date = '01.'+str(month).zfill(2)+'.2021'
+#     end_date = '01.'+str(month+1).zfill(2)+'.2021'
+#     file_name = Path.joinpath(FOLDER_2021, str(month).zfill(2)+'21.json')
+#     crawl_and_save_to_file(start_date=start_date, end_date=end_date, file_name=file_name)
+# crawl_and_save_to_file(
+#     start_date='01.12.2021',
+#     end_date='01.01.2022',
+#     file_name=Path.joinpath(FOLDER_2021, '1221.json'))
+
+
+# 2022
+FOLDER_2022 = Path.joinpath(DATA_FOLDER, '2022')
+FOLDER_2022.mkdir(parents=True, exist_ok=True)
+
+LOG_FILE = Path.joinpath(FOLDER_2022, 'crawler.logs')
 
 logging.basicConfig(
     format='{levelname} {name} {asctime}: {message}',
@@ -302,12 +332,12 @@ logging.basicConfig(
 
 MONTHS = list(range(1, 12))
 
-for month in MONTHS:
-    start_date = '01.'+str(month).zfill(2)+'.2021'
-    end_date = '01.'+str(month+1).zfill(2)+'.2021'
-    file_name = Path.joinpath(FOLDER_2021, str(month).zfill(2)+'21.json')
-    crawl_and_save_to_file(start_date=start_date, end_date=end_date, file_name=file_name)
+# for month in MONTHS:
+#     start_date = '01.'+str(month).zfill(2)+'.2022'
+#     end_date = '01.'+str(month+1).zfill(2)+'.2022'
+#     file_name = Path.joinpath(FOLDER_2022, str(month).zfill(2)+'22.json')
+#     crawl_and_save_to_file(start_date=start_date, end_date=end_date, file_name=file_name)
 crawl_and_save_to_file(
-    start_date='01.12.2021',
-    end_date='01.01.2022',
-    file_name=Path.joinpath(FOLDER_2021, '1221.json'))
+    start_date='01.01.2022',
+    end_date='03.01.2022',
+    file_name=Path.joinpath(FOLDER_2022, 'test.json'))
